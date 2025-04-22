@@ -10,6 +10,7 @@
     <PackageReference Include="MVTec.HalconDotNet-Windows" Version="24111.0.0" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\FactoryCube.Core\FactoryCube.Core.csproj" />
     <ProjectReference Include="..\FactoryCube.Halcon\FactoryCube.Halcon.csproj" />
   </ItemGroup>
 </Project>

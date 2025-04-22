@@ -4,18 +4,19 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:FactoryCube.UI"
+        xmlns:halcon="http://schemas.mvtec.com/halcondotnet"
         Title="FactoryCube" Height="800" Width="1200"
         mc:Ignorable="d">
 
     <DockPanel>
+
         <!-- Menu Bar -->
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="File">
-                <MenuItem Header="Open" />
                 <MenuItem Header="Exit" Click="Exit_Click"/>
             </MenuItem>
             <MenuItem Header="View">
-                <MenuItem Header="Toggle Log Window" />
+                <MenuItem Header="Toggle Log Window"/>
             </MenuItem>
         </Menu>
 
@@ -23,9 +24,11 @@
         <ToolBar DockPanel.Dock="Top">
             <Button Content="Start Preview" Command="{Binding StartPreviewCommand}" />
             <Button Content="Stop Preview" Command="{Binding StopPreviewCommand}" />
-            <ComboBox ItemsSource="{Binding CameraList}"
+            <Button Content="Refresh" Command="{Binding RefreshCamerasCommand}" />
+            <ComboBox ItemsSource="{Binding AvailableCameras}"
                       SelectedItem="{Binding SelectedCamera}"
-                      Width="200"/>
+                      DisplayMemberPath="Name"
+                      Width="250"/>
         </ToolBar>
 
         <!-- Status Bar -->
@@ -36,58 +39,51 @@
         <!-- Main Workspace -->
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="200"/>
-                <!-- Sidebar -->
-                <ColumnDefinition Width="*"/>
-                <!-- Main Image -->
+                <ColumnDefinition Width="3*"/>
+                <ColumnDefinition Width="2*"/>
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
                 <RowDefinition Height="*"/>
-                <RowDefinition Height="150"/>
-                <!-- Log area -->
+                <RowDefinition Height="200"/>
             </Grid.RowDefinitions>
 
-            <!-- Left Panel (Navigation / Tool Tree) -->
-            <TabControl Grid.Row="0" Grid.Column="0">
-                <TabItem Header="Operations">
-                    <TreeView>
-                        <TreeViewItem Header="Scan Setup" />
-                        <TreeViewItem Header="Camera" />
-                        <TreeViewItem Header="Image Processing" />
-                        <TreeViewItem Header="Stitching" />
-                    </TreeView>
-                </TabItem>
-                <TabItem Header="Recipe">
-                    <ListBox>
-                        <ListBoxItem Content="New Recipe"/>
-                        <ListBoxItem Content="Load Recipe"/>
-                    </ListBox>
-                </TabItem>
-            </TabControl>
+            <!-- Live Image View -->
+            <Border Grid.Column="0" Grid.Row="0" Margin="10" BorderBrush="Gray" BorderThickness="1">
+                <halcon:HSmartWindowControlWPF x:Name="HalconView"
+                                               Loaded="HalconView_Loaded"
+                                           Grid.Row="0"
+                                           Grid.Column="1"
+                                           Margin="10"
+                                           HorizontalAlignment="Stretch"
+                                           VerticalAlignment="Stretch"/>
+            </Border>
 
-            <!-- Main Image Area -->
-            <!-- Main Image Area -->
-            <Grid Grid.Column="1" Grid.Row="0" Margin="10">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
+            <!-- Camera Settings Panel -->
+            <StackPanel Grid.Column="1" Grid.Row="0" Margin="10" Orientation="Vertical">
+                <TextBlock Text="Exposure Time (us)" Margin="0,10,0,2"/>
+                <Slider Minimum="100" Maximum="50000" TickFrequency="1000"
+                        Value="{Binding SelectedCamera.ExposureTime, Mode=TwoWay}" />
 
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                    <Button Content="Start Preview" Command="{Binding StartPreviewCommand}" Margin="0,0,10,0"/>
-                    <Button Content="Stop Preview" Command="{Binding StopPreviewCommand}" Margin="0,0,10,0"/>
-                    <ComboBox ItemsSource="{Binding AvailableCameras}"
-                          SelectedItem="{Binding SelectedCamera}"
-                          DisplayMemberPath="Name"
-                          Width="150" />
-                </StackPanel>
+                <TextBlock Text="Frame Rate (fps)" Margin="0,10,0,2"/>
+                <Slider Minimum="1" Maximum="60" TickFrequency="1"
+                        Value="{Binding SelectedCamera.FrameRate, Mode=TwoWay}" />
 
-                <Border Grid.Row="1" BorderBrush="Gray" BorderThickness="1">
-                    <Image Grid.Row="1" Source="{Binding LiveImage}" Stretch="Uniform" />
-                </Border>
-            </Grid>
+                <TextBlock Text="Gain (dB)" Margin="0,10,0,2"/>
+                <Slider Minimum="0" Maximum="24" TickFrequency="1"
+                        Value="{Binding SelectedCamera.Gain, Mode=TwoWay}" />
 
+                <TextBlock Text="Trigger Mode" Margin="0,10,0,2"/>
+                <ComboBox SelectedItem="{Binding SelectedCamera.TriggerMode, Mode=TwoWay}">
+                    <ComboBoxItem Content="On" />
+                    <ComboBoxItem Content="Off" />
+                    <ComboBoxItem Content="Software" />
+                </ComboBox>
 
+                <Button Content="Apply Settings"
+                        Command="{Binding ApplyCameraSettingsCommand}"
+                        Margin="0,20,0,0"
+                        HorizontalAlignment="Left"/>
+            </StackPanel>
 
             <!-- Log Output -->
             <TextBox Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="1"

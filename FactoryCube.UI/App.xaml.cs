@@ -7,6 +7,7 @@ using FactoryCube.Interfaces;
 using FactoryCube.Halcon.Camera;
 using FactoryCube.UI.ViewModels;
 using FactoryCube.Halcon.Vision;
+using System.Windows.Media.Media3D;
 
 namespace FactoryCube.UI
 {
@@ -23,6 +24,8 @@ namespace FactoryCube.UI
                     // Core services
                     services.AddSingleton<ICamera, HalconCamera>();
                     services.AddSingleton<IVisionProcessor, DummyVisionProcessor>(); // Replace with real processor
+                    services.AddSingleton<Func<string, ICamera>>(sp => deviceId => new HalconCamera(deviceId));
+
 
                     // ViewModels
                     services.AddSingleton<CameraPreviewViewModel>();
@@ -41,13 +44,16 @@ namespace FactoryCube.UI
             base.OnStartup(e);
         }
 
-        protected override async void OnExit(ExitEventArgs e)
+        protected override void OnExit(ExitEventArgs e)
         {
-            using (AppHost)
+            if (ServiceProvider.GetService(typeof(CameraPreviewViewModel)) is CameraPreviewViewModel vm)
             {
-                await AppHost.StopAsync(TimeSpan.FromSeconds(5));
+                vm?.StopPreviewCommand.Execute(null); // Stop the camera safely
             }
+
             base.OnExit(e);
         }
+
+
     }
 }

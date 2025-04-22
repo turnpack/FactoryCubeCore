@@ -10,6 +10,8 @@ namespace FactoryCube.Interfaces
         bool IsRunning { get; }
         void Start();
         void Stop();
+
+        void Close();
         void SetAcquisitionMode(string mode);
     }
 }
