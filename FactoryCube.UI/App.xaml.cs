@@ -5,7 +5,7 @@ using System;
 using System.Windows;
 using FactoryCube.Interfaces;
 using FactoryCube.Halcon.Camera;
-using FactoryCube.UI.ViewModels;
+using FactoryCube.UI.Views;
 using FactoryCube.Halcon.Vision;
 using System.Windows.Media.Media3D;
 

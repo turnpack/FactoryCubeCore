@@ -105,7 +105,6 @@ namespace FactoryCube.Halcon.Camera
                         return;
 
                     using HObject image = _grabber.GrabImageAsync(2000);
-
                     if (image != null && image.IsInitialized())
                     {
                         OnImageGrabbed?.Invoke(this, image);

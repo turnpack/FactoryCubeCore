@@ -15,15 +15,53 @@ using FactoryCube.Halcon.Camera;
 using System.Linq;
 using System.ComponentModel;
 using System.Threading.Tasks;
+using FactoryCube.UI.Graphics;
+using FactoryCube.UI.Enums;
 
 public class CameraPreviewViewModel : ViewModelBase
 {
     private readonly ILogger<CameraPreviewViewModel> _logger;
     private ICamera? _camera;
+    private OverlayManager? _overlayManager;
+    private readonly List<(double X, double Y)> _roiCenters = new();
+
     private readonly Func<string, ICamera> _cameraFactory;
     public HWindow? HalconWindow { get; set; }
+    private double? _zoomRow1, _zoomCol1, _zoomRow2, _zoomCol2;
+    private int _lastImageWidth = 0;
+    private int _lastImageHeight = 0;
+    private HObject? _lastImage;
+
+    private bool _isDrawingRectangle = false;
+    private (double X, double Y)? _rectStart = null;
+
 
     public IRelayCommand RefreshCamerasCommand { get; }
+    public IRelayCommand ResetZoomCommand { get; }
+
+    private RoiShape _currentRoiShape = RoiShape.Rectangle;
+    public RoiShape CurrentRoiShape
+    {
+        get => _currentRoiShape;
+        set => SetProperty(ref _currentRoiShape, value);
+    }
+
+
+    public void SetRoiShape(RoiShape shape)
+    {
+        CurrentRoiShape = shape;
+        Log($"ROI shape set to: {shape}");
+    }
+
+    public void AddCenteredRectangle(double x, double y) =>
+    _overlayManager?.AddCenteredRectangle(x, y);
+
+    public void AddCenteredEllipse(double x, double y) =>
+        _overlayManager?.AddCenteredEllipse(x, y);
+
+    public void AddPolygonPoint(double x, double y) =>
+        _overlayManager?.AddPolygonPoint(x, y); // You’ll build up points here
+
 
 
     public ObservableCollection<CameraInfo> AvailableCameras { get; } = new();
@@ -102,6 +140,9 @@ public class CameraPreviewViewModel : ViewModelBase
     public IRelayCommand StartPreviewCommand { get; }
     public IRelayCommand StopPreviewCommand { get; }
     public IRelayCommand ApplyCameraSettingsCommand { get; }
+    public IRelayCommand ToggleCrosshairCommand { get; }
+    public IRelayCommand ToggleGridCommand { get; }
+
 
     private string _statusMessage = "Ready";
     public string StatusMessage
@@ -120,7 +161,27 @@ public class CameraPreviewViewModel : ViewModelBase
         StopPreviewCommand = new RelayCommand(StopPreview, () => IsPreviewRunning);
         RefreshCamerasCommand = new RelayCommand(DetectAvailableCameras);
         ApplyCameraSettingsCommand = new RelayCommand(ApplyCameraSettings);
+        ResetZoomCommand = new RelayCommand(ResetZoom);
+        ToggleCrosshairCommand = new RelayCommand(() =>
+        {
+            if (_overlayManager != null)
+            {
+                _overlayManager.ShowCrosshair = !_overlayManager.ShowCrosshair;
+                RedrawOverlays();
+            }
+        });
 
+        ToggleGridCommand = new RelayCommand(() =>
+        {
+            if (_overlayManager != null)
+            {
+                _overlayManager.ShowGrid = !_overlayManager.ShowGrid;
+                RedrawOverlays();
+            }
+        });
+        DeleteRoiCommand = new RelayCommand<RoiItem>(DeleteRoi);
+        MoveUpRoiCommand = new RelayCommand<RoiItem>(MoveUpRoi);
+        MoveDownRoiCommand = new RelayCommand<RoiItem>(MoveDownRoi);
 
 
         Log("CameraPreviewViewModel initialized.");
@@ -320,6 +381,8 @@ public class CameraPreviewViewModel : ViewModelBase
             IsPreviewRunning = false;
             StatusMessage = "Preview stopped.";
             LiveImage = null;
+            _lastImage?.Dispose();
+            _lastImage = null;
 
             NotifyCommandStates();
         }
@@ -358,10 +421,33 @@ public class CameraPreviewViewModel : ViewModelBase
 
             HTuple row = 0, column = 0;
             HOperatorSet.GetImageSize(image, out HTuple width, out HTuple height);
-            
-            HalconWindow.SetPart(row, column, height - 1, width - 1);
+
+            _lastImageWidth = width.I;
+            _lastImageHeight = height.I;
+            if (_zoomRow1.HasValue)
+            {
+                HalconWindow.SetPart(_zoomRow1.Value, _zoomCol1.Value, _zoomRow2.Value, _zoomCol2.Value);
+            }
+            else
+            {
+                HalconWindow.SetPart(row, column, height - 1, width - 1);
+            }
+
+            _lastImage?.Dispose();
+            _lastImage = image.CopyObj(1, -1); // force copy entire object
+
+
+
             HalconWindow.ClearWindow();
             HalconWindow.DispObj(image);
+
+            // Initialize overlay manager if needed
+            if (_overlayManager == null)
+                _overlayManager = new OverlayManager(HalconWindow, width.I, height.I);
+            else
+                _overlayManager.UpdateImageSize(width.I, height.I);
+
+            _overlayManager.DrawOverlays(PlacedRois);
         }
         catch (Exception ex)
         {
@@ -370,6 +456,185 @@ public class CameraPreviewViewModel : ViewModelBase
         }
     }
 
+    public void DrawSnapCenteredRoi(double x, double y)
+    {
+        _overlayManager?.AddCenteredRoi(x, y);
+        _overlayManager?.DrawOverlays(PlacedRois);
+    }
+
+    public void ClearRois()
+    {
+        _overlayManager?.ClearAllRois(); // You'll need to implement this
+        _overlayManager?.DrawOverlays(PlacedRois);
+    }
+
+    private (double X, double Y)? _previewPolygonPoint;
+
+    // Called on MouseMove in Polygon mode
+    public void UpdatePolygonPreview(double x, double y)
+    {
+        _previewPolygonPoint = (x, y);
+        RedrawOverlays();
+    }
+
+    // Called on right?click to finish the poly
+    public void FinishPolygon()
+    {
+        if (_previewPolygonPoint.HasValue)
+            AddPolygonPoint(_previewPolygonPoint.Value.X, _previewPolygonPoint.Value.Y);
+        _previewPolygonPoint = null;
+        RedrawOverlays();
+    }
+
+    public void RedrawOverlays()
+    {
+        try
+        {
+            if (_lastImage != null && HalconWindow != null)
+            {
+                // 1) Clear out the old lines
+                HalconWindow.ClearWindow();
+
+                // 2) Re-paint the last image
+                HalconWindow.DispObj(_lastImage);
+            }
+
+            // 3) Draw only the overlays you currently want
+            _overlayManager?.DrawOverlays(PlacedRois);
+        }
+        catch (Exception ex)
+        {
+            Log($"Overlay redraw error: {ex.Message}");
+        }
+    }
+
+    public void SetZoomPart(double row1, double col1, double row2, double col2)
+    {
+        _zoomRow1 = row1;
+        _zoomCol1 = col1;
+        _zoomRow2 = row2;
+        _zoomCol2 = col2;
+    }
+
+    public void ResetZoom()
+    {
+        _zoomRow1 = _zoomCol1 = _zoomRow2 = _zoomCol2 = null;
+
+        if (_lastImage != null && HalconWindow != null && _lastImageWidth > 0 && _lastImageHeight > 0)
+        {
+            try
+            {
+                HalconWindow.SetPart(0, 0, _lastImageHeight - 1, _lastImageWidth - 1);
+                Log($"Resetting zoom to: (0, 0, {_lastImageHeight - 1}, {_lastImageWidth - 1})");
+
+                HalconWindow.ClearWindow();
+                HalconWindow.DispObj(_lastImage);
+                _overlayManager?.UpdateImageSize(_lastImageWidth, _lastImageHeight);
+                _overlayManager?.DrawOverlays(PlacedRois);
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Reset Zoom failed: {ex.Message}";
+                Log(StatusMessage);
+            }
+        }
+    }
+
+    public ObservableCollection<RoiItem> PlacedRois { get; } = new();
+
+    private RoiItem _selectedRoi;
+    public RoiItem SelectedRoi
+    {
+        get => _selectedRoi;
+        set => SetProperty(ref _selectedRoi, value);
+    }
+
+    public IRelayCommand<RoiItem> DeleteRoiCommand { get; }
+    public IRelayCommand<RoiItem> MoveUpRoiCommand { get; }
+    public IRelayCommand<RoiItem> MoveDownRoiCommand { get; }
+
+
+    private void DeleteRoi(RoiItem roi)
+    {
+        PlacedRois.Remove(roi);
+        RedrawOverlays();
+    }
+
+    private void MoveUpRoi(RoiItem roi)
+    {
+        var i = PlacedRois.IndexOf(roi);
+        if (i > 0) { PlacedRois.Move(i, i - 1); RedrawOverlays(); }
+    }
+
+    private void MoveDownRoi(RoiItem roi)
+    {
+        var i = PlacedRois.IndexOf(roi);
+        if (i < PlacedRois.Count - 1) { PlacedRois.Move(i, i + 1); RedrawOverlays(); }
+    }
+
+
+    private (double X, double Y)? _rectangleStart = null;
+
+    public void BeginRectangle(double x, double y)
+    {
+        _rectangleStart = (x, y);
+    }
+
+    public void UpdateRectanglePreview(double x, double y, bool snapToSquare)
+    {
+        if (_rectangleStart is (double x0, double y0))
+            _overlayManager?.SetPreviewRectangle(x0, y0, x, y, snapToSquare);
+    }
+
+    public void CompleteRectangle(double x, double y, bool snapToSquare)
+    {
+        if (_rectangleStart is (double x0, double y0))
+        {
+            if (snapToSquare)
+            {
+                double side = Math.Min(Math.Abs(x - x0), Math.Abs(y - y0));
+                x = x0 + Math.Sign(x - x0) * side;
+                y = y0 + Math.Sign(y - y0) * side;
+            }
+
+            double centerX = (x0 + x) / 2;
+            double centerY = (y0 + y) / 2;
+            double width = Math.Abs(x - x0);
+            double height = Math.Abs(y - y0);
+
+            _overlayManager?.AddCenteredRectangle(centerX, centerY, width, height);
+            _overlayManager?.ClearPreview();
+            _rectangleStart = null;
+        }
+    }
+
+    private bool _isDrawingEllipse = false;
+    private (double X, double Y)? _ellipseStart;
+
+    public void BeginEllipse(double x, double y)
+    {
+        _isDrawingEllipse = true;
+        _ellipseStart = (x, y);
+    }
+
+    public void UpdatePreviewEllipse(double x, double y, bool snapCircle)
+    {
+        if (!_isDrawingEllipse || _ellipseStart == null) return;
+        var (x1, y1) = _ellipseStart.Value;
+        _overlayManager?.SetPreviewEllipse(x1, y1, x, y, snapCircle);
+        RedrawOverlays();
+    }
+
+    public void CompleteEllipse(double x, double y, bool snapCircle)
+    {
+        if (!_isDrawingEllipse || _ellipseStart == null) return;
+        var (x1, y1) = _ellipseStart.Value;
+        _isDrawingEllipse = false;
+        _ellipseStart = null;
+        _overlayManager?.ClearPreviewEllipse();
+        _overlayManager?.AddEllipseFromCorners(x1, y1, x, y, snapCircle);
+        RedrawOverlays();
+    }
 
 
 
