@@ -1,16 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net9.0-windows</TargetFramework>
+    <TargetFramework>net8.0-windows7.0</TargetFramework>
     <UseWPF>true</UseWPF>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.4" />
-    <PackageReference Include="MVTec.HalconDotNet-Windows" Version="24111.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.6" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.6" />
+    <PackageReference Include="MVTec.HalconDotNet-Windows" Version="25050.0.0" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\FactoryCube.Comm\FactoryCube.Comm.csproj" />
     <ProjectReference Include="..\FactoryCube.Core\FactoryCube.Core.csproj" />
-    <ProjectReference Include="..\FactoryCube.Halcon\FactoryCube.Halcon.csproj" />
+    <ProjectReference Include="..\FactoryCube.Halcon\FactoryCube.Vision.csproj" />
+    <ProjectReference Include="..\FactoryCube.Interfaces\FactoryCube.Interfaces.csproj" />
+    <ProjectReference Include="..\FactoryCube.Services\FactoryCube.Services.csproj" />
   </ItemGroup>
 </Project>

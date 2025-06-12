@@ -7,11 +7,11 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using FactoryCube.UI.ViewModels;
 using System.Collections.Generic;
-using FactoryCube.Halcon.Vision;
+using FactoryCube.Vision.Vision;
 using FactoryCube.UI;
 using HalconDotNet;
 using FactoryCube.Core.Models;
-using FactoryCube.Halcon.Camera;
+using FactoryCube.Vision.Camera;
 using System.Linq;
 using System.ComponentModel;
 using System.Threading.Tasks;
@@ -21,11 +21,11 @@ using FactoryCube.UI.Enums;
 public class CameraPreviewViewModel : ViewModelBase
 {
     private readonly ILogger<CameraPreviewViewModel> _logger;
-    private ICamera? _camera;
+    private ICameraService? _camera;
     private OverlayManager? _overlayManager;
     private readonly List<(double X, double Y)> _roiCenters = new();
 
-    private readonly Func<string, ICamera> _cameraFactory;
+    private readonly Func<string, ICameraService> _cameraFactory;
     public HWindow? HalconWindow { get; set; }
     private double? _zoomRow1, _zoomCol1, _zoomRow2, _zoomCol2;
     private int _lastImageWidth = 0;
@@ -96,7 +96,7 @@ public class CameraPreviewViewModel : ViewModelBase
 
     private void OnSelectedCameraChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (!IsPreviewRunning || _camera is not HalconCamera halcon || SelectedCamera == null)
+        if (!IsPreviewRunning || _camera is not HalconCameraService halcon || SelectedCamera == null)
             return;
 
         try
@@ -152,7 +152,7 @@ public class CameraPreviewViewModel : ViewModelBase
     }
 
 
-    public CameraPreviewViewModel(Func<string, ICamera> cameraFactory, ILogger<CameraPreviewViewModel> logger)
+    public CameraPreviewViewModel(Func<string, ICameraService> cameraFactory, ILogger<CameraPreviewViewModel> logger)
     {
         _cameraFactory = cameraFactory;
         _logger = logger;
@@ -313,7 +313,7 @@ public class CameraPreviewViewModel : ViewModelBase
 
         try
         {
-            if (_camera is HalconCamera halcon)
+            if (_camera is HalconCameraService halcon)
             {
                 // Use combined method for framerate and exposure
                 halcon.SetFramerateAndExposure(SelectedCamera.FrameRate, SelectedCamera.ExposureTime);
@@ -347,7 +347,7 @@ public class CameraPreviewViewModel : ViewModelBase
         {
             StopPreview(); // Ensure clean state
 
-            _camera = new HalconCamera(SelectedCamera.Id);
+            _camera = new HalconCameraService(SelectedCamera.Id);
             _camera.OnImageGrabbed += OnImageGrabbed;
             _camera.OnError += (_, message) =>
             {

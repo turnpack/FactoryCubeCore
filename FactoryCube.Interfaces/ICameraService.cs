@@ -3,7 +3,7 @@ namespace FactoryCube.Interfaces
     using HalconDotNet;
     using System;
 
-    public interface ICamera
+    public interface ICameraService
     {
         event EventHandler<HObject> OnImageGrabbed;
         event EventHandler<string> OnError;

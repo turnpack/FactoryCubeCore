@@ -4,10 +4,13 @@ using Microsoft.Extensions.Hosting;
 using System;
 using System.Windows;
 using FactoryCube.Interfaces;
-using FactoryCube.Halcon.Camera;
+using FactoryCube.Vision.Camera;
 using FactoryCube.UI.Views;
-using FactoryCube.Halcon.Vision;
+using FactoryCube.Vision.Vision;
+using FactoryCube.Comm;
+using FactoryCube.Services;
 using System.Windows.Media.Media3D;
+using System.ComponentModel.Design;
 
 namespace FactoryCube.UI
 {
@@ -22,13 +25,17 @@ namespace FactoryCube.UI
                 .ConfigureServices((context, services) =>
                 {
                     // Core services
-                    services.AddSingleton<ICamera, HalconCamera>();
-                    services.AddSingleton<IVisionProcessor, DummyVisionProcessor>(); // Replace with real processor
-                    services.AddSingleton<Func<string, ICamera>>(sp => deviceId => new HalconCamera(deviceId));
+                    services.AddSingleton<ICameraService, HalconCameraService>();
+                    services.AddSingleton<IVisionProcessorService, DummyVisionProcessor>(); // Replace with real processor
+                    services.AddSingleton<Func<string, ICameraService>>(sp => deviceId => new HalconCameraService(deviceId));
+                    services.AddSingleton<ICommService, OmronCommService>();
+
 
 
                     // ViewModels
                     services.AddSingleton<CameraPreviewViewModel>();
+
+
                 })
                 .Build();
         }

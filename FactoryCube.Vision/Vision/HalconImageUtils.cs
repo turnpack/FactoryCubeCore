@@ -1,7 +1,7 @@
 using HalconDotNet;
 using System;
 
-namespace FactoryCube.Halcon.Vision
+namespace FactoryCube.Vision.Vision
 {
     public static class HalconImageUtils
     {

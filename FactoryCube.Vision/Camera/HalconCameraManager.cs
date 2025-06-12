@@ -1,4 +1,4 @@
-namespace FactoryCube.Halcon.Camera
+namespace FactoryCube.Vision.Camera
 {
     public static class HalconCameraManager
     {

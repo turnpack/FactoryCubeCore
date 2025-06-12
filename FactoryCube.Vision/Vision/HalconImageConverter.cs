@@ -3,7 +3,7 @@ using System;
 using System.IO;
 using System.Windows.Media.Imaging;
 
-namespace FactoryCube.Halcon.Vision
+namespace FactoryCube.Vision.Vision
 {
     public static class HalconImageConverter
     {

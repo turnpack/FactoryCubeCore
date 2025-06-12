@@ -1,6 +1,6 @@
 using HalconDotNet;
 
-namespace FactoryCube.Halcon.Utilities
+namespace FactoryCube.Vision.Utilities
 {
     public static class HalconHelpers
     {

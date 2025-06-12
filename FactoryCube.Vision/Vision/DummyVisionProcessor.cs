@@ -2,9 +2,9 @@
 using HalconDotNet;
 using Microsoft.Extensions.Logging;
 
-namespace FactoryCube.Halcon.Vision
+namespace FactoryCube.Vision.Vision
 {
-    public class DummyVisionProcessor : IVisionProcessor
+    public class DummyVisionProcessor : IVisionProcessorService
     {
         private readonly ILogger<DummyVisionProcessor> _logger;
 

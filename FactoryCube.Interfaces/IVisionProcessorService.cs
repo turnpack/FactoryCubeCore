@@ -2,7 +2,7 @@
 
 namespace FactoryCube.Interfaces
 {
-    public interface IVisionProcessor
+    public interface IVisionProcessorService
     {
         HObject Process(HObject image);
     }

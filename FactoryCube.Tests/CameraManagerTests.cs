@@ -10,7 +10,7 @@ namespace FactoryCube.Tests
         [Fact]
         public void CanStartAndStopPreview()
         {
-            var camera = new Mock<ICamera>();
+            var camera = new Mock<ICameraService>();
             camera.Setup(c => c.IsRunning).Returns(false);
             camera.Setup(c => c.Start());
             camera.Setup(c => c.Stop());

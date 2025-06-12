@@ -1,8 +1,8 @@
 using Xunit;
 using HalconDotNet;
-using FactoryCube.Halcon;
+using FactoryCube.Vision;
 using System;
-using FactoryCube.Halcon.Vision;
+using FactoryCube.Vision.Vision;
 
 namespace FactoryCube.Tests
 {

@@ -5,7 +5,7 @@ namespace FactoryCube.Interfaces
     using System.Threading.Tasks;
     using System.Windows.Media.Imaging;
 
-    public interface IImageStitcher
+    public interface IImageStitcherService
     {
         Task<BitmapImage> StitchAsync(List<HObject> images);
     }

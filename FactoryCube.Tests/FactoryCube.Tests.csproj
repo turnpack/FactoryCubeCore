@@ -1,22 +1,23 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net9.0-windows</TargetFramework>
+    <TargetFramework>net8.0-windows7.0</TargetFramework>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.4" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.4" />
-    <PackageReference Include="MVTec.HalconDotNet-Windows" Version="24111.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.6" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.6" />
+    <PackageReference Include="MVTec.HalconDotNet-Windows" Version="25050.0.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.0.2">
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.1">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Moq" Version="4.20.72" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\FactoryCube.Comm\FactoryCube.Comm.csproj" />
     <ProjectReference Include="..\FactoryCube.Core\FactoryCube.Core.csproj" />
-    <ProjectReference Include="..\FactoryCube.Halcon\FactoryCube.Halcon.csproj" />
+    <ProjectReference Include="..\FactoryCube.Halcon\FactoryCube.Vision.csproj" />
     <ProjectReference Include="..\FactoryCube.Interfaces\FactoryCube.Interfaces.csproj" />
     <ProjectReference Include="..\FactoryCube.UI\FactoryCube.UI.csproj" />
   </ItemGroup>

@@ -6,7 +6,7 @@ namespace FactoryCube.Interfaces
     using System.Threading;
     using System.Threading.Tasks;
 
-    public interface IScanExecutor
+    public interface IScanExecutorService
     {
         event EventHandler<string> OnStatusUpdate;
         event EventHandler<(int current, int total)> OnProgressUpdate;

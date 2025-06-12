@@ -5,11 +5,11 @@ using FactoryCube.Interfaces;
 using Microsoft.VisualBasic.Logging;
 using Microsoft.Extensions.Logging;
 
-namespace FactoryCube.Halcon.Camera
+namespace FactoryCube.Vision.Camera
 {
-    public class HalconCamera : ICamera
+    public class HalconCameraService : ICameraService
     {
-        private readonly ILogger<HalconCamera> _logger;
+        private readonly ILogger<HalconCameraService> _logger;
 
         private Thread _grabThread;
         private volatile bool _running;
@@ -25,7 +25,7 @@ namespace FactoryCube.Halcon.Camera
 
         private readonly string _deviceName;
 
-        public HalconCamera(string deviceId)
+        public HalconCameraService(string deviceId)
         {
             _deviceId = deviceId ?? throw new ArgumentNullException(nameof(deviceId));
         }
