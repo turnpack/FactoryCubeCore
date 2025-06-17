@@ -8,5 +8,7 @@ namespace FactoryCube.Interfaces
 {
     public interface ICommService
     {
+        Task<bool> SendCommandAsync(string command);
+        string LastStatus { get; }
     }
 }

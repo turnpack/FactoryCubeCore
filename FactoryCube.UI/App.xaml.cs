@@ -6,16 +6,17 @@ using System.Windows;
 using FactoryCube.Interfaces;
 using FactoryCube.Vision.Camera;
 using FactoryCube.UI.Views;
-using FactoryCube.Vision.Vision;
 using FactoryCube.Comm;
-using FactoryCube.Services;
-using System.Windows.Media.Media3D;
-using System.ComponentModel.Design;
+using Microsoft.Extensions.Logging;
+using FactoryCube.Vision.Processors;
+using NLog;
+
 
 namespace FactoryCube.UI
 {
     public partial class App : Application
     {
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         public static IHost AppHost { get; private set; }
         public static IServiceProvider ServiceProvider => AppHost.Services;
 
@@ -26,8 +27,16 @@ namespace FactoryCube.UI
                 {
                     // Core services
                     services.AddSingleton<ICameraService, HalconCameraService>();
-                    services.AddSingleton<IVisionProcessorService, DummyVisionProcessor>(); // Replace with real processor
-                    services.AddSingleton<Func<string, ICameraService>>(sp => deviceId => new HalconCameraService(deviceId));
+                    //services.AddSingleton<IVisionProcessorService, DummyVisionProcessor>();
+                    services.AddSingleton<IVisionProcessor, HalconVisionProcessor>();
+                    services.AddSingleton<Func<string, ICameraService>>(sp =>
+                    {
+                        return deviceId =>
+                        {
+                            var logger = sp.GetRequiredService<ILogger<HalconCameraService>>();
+                            return new HalconCameraService(deviceId, logger);
+                        };
+                    });
                     services.AddSingleton<ICommService, OmronCommService>();
 
 
@@ -46,6 +55,7 @@ namespace FactoryCube.UI
 
             var mainWindow = new MainWindow();
             mainWindow.DataContext = AppHost.Services.GetRequiredService<CameraPreviewViewModel>();
+            Logger.Info("FactoryCube application started.");
             mainWindow.Show();
 
             base.OnStartup(e);

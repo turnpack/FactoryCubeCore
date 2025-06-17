@@ -1,11 +1,11 @@
+using HalconDotNet;
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+
 namespace FactoryCube.Interfaces
 {
-    using HalconDotNet;
-    using System;
-    using System.Collections.Generic;
-    using System.Threading;
-    using System.Threading.Tasks;
-
     public interface IScanExecutorService
     {
         event EventHandler<string> OnStatusUpdate;

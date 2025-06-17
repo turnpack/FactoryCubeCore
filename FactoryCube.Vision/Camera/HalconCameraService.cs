@@ -1,68 +1,80 @@
 using HalconDotNet;
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using FactoryCube.Interfaces;
-using Microsoft.VisualBasic.Logging;
 using Microsoft.Extensions.Logging;
 
 namespace FactoryCube.Vision.Camera
 {
-    public class HalconCameraService : ICameraService
+    public class HalconCameraService : ICameraService, IDisposable
     {
         private readonly ILogger<HalconCameraService> _logger;
-
-        private Thread _grabThread;
-        private volatile bool _running;
         private HFramegrabber _grabber;
-        private readonly string _deviceId;
+        private Thread _grabThread;
+        private CancellationTokenSource _cancellation;
+        private volatile bool _running;
+
         public string Name { get; set; } = "Default Camera";
+        public bool IsRunning => _running;
 
         public event EventHandler<HObject> OnImageGrabbed;
         public event EventHandler<string> OnError;
-        private CancellationTokenSource? _cancellation;
 
-        public bool IsRunning => _running;
+        private readonly string _deviceId;
 
-        private readonly string _deviceName;
-
-        public HalconCameraService(string deviceId)
+        public HalconCameraService(string deviceId, ILogger<HalconCameraService> logger)
         {
             _deviceId = deviceId ?? throw new ArgumentNullException(nameof(deviceId));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public void Start()
+        public async Task InitializeAsync()
         {
             try
             {
-                _grabber = new HFramegrabber(
-                    "USB3Vision", 1, 1, 0, 0, 0, 0,
-                    "default", 8, "default", -1, "default", "default",
-                    _deviceId, 0, -1);
+                await Task.Run(() =>
+                {
+                    _grabber = new HFramegrabber(
+                        "USB3Vision", 1, 1, 0, 0, 0, 0,
+                        "default", 8, "default", -1, "default", "default",
+                        _deviceId, 0, -1);
 
-                // Explicitly set trigger mode to continuous before grabbing
-                _grabber.SetFramegrabberParam("TriggerMode", "Off"); // or "Continuous"
-                _grabber.SetFramegrabberParam("AcquisitionMode", "Continuous");
-
-                _cancellation = new CancellationTokenSource();
-                _grabThread = new Thread(() => GrabLoop(_cancellation.Token));
-                _grabThread.IsBackground = true;
-                _grabThread.Start();
-
-                _running = true;
+                    // continuous trigger
+                    _grabber.SetFramegrabberParam("TriggerMode", "Off");
+                    _grabber.SetFramegrabberParam("AcquisitionMode", "Continuous");
+                });
             }
             catch (Exception ex)
             {
-                OnError?.Invoke(this, $"Failed to start camera: {ex.Message}");
+                OnError?.Invoke(this, $"InitializeAsync failed: {ex.Message}");
             }
         }
 
-
-        public void Stop()
+        public async Task StartAcquisitionAsync()
         {
-            try
+            if (_grabber == null)
+                throw new InvalidOperationException("Camera not initialized");
+
+            await Task.Run(() =>
+            {
+                _cancellation = new CancellationTokenSource();
+                _grabThread = new Thread(() => GrabLoop(_cancellation.Token))
+                {
+                    IsBackground = true
+                };
+                _grabThread.Start();
+                _running = true;
+            });
+        }
+
+
+
+        public async Task StopAcquisitionAsync()
+        {
+            await Task.Run(() =>
             {
                 _running = false;
-
                 if (_cancellation != null)
                 {
                     _cancellation.Cancel();
@@ -70,10 +82,17 @@ namespace FactoryCube.Vision.Camera
                     _cancellation.Dispose();
                     _cancellation = null;
                 }
-
                 _grabThread = null;
+            });
+        }
 
-                if (_grabber != null)
+        public async Task CloseAsync()
+        {
+            await StopAcquisitionAsync();
+
+            if (_grabber != null)
+            {
+                await Task.Run(() =>
                 {
                     try
                     {
@@ -83,17 +102,25 @@ namespace FactoryCube.Vision.Camera
                     {
                         OnError?.Invoke(this, $"Error closing grabber: {hex.Message}");
                     }
-
-                    _grabber.Dispose();
-                    _grabber = null;
-                }
-            }
-            catch (Exception ex)
-            {
-                OnError?.Invoke(this, $"Exception during Stop(): {ex.Message}");
+                    finally
+                    {
+                        _grabber.Dispose();
+                        _grabber = null;
+                    }
+                });
             }
         }
 
+        public async Task SetAcquisitionModeAsync(string mode)
+        {
+            if (_grabber == null)
+                throw new InvalidOperationException("Camera not initialized");
+
+            await Task.Run(() =>
+            {
+                _grabber.SetFramegrabberParam("AcquisitionMode", mode);
+            });
+        }
 
         private void GrabLoop(CancellationToken token)
         {
@@ -101,18 +128,13 @@ namespace FactoryCube.Vision.Camera
             {
                 try
                 {
-                    if (_grabber == null)
-                        return;
-
-                    using HObject image = _grabber.GrabImageAsync(2000);
+                    using var image = _grabber.GrabImageAsync(2000);
                     if (image != null && image.IsInitialized())
-                    {
                         OnImageGrabbed?.Invoke(this, image);
-                    }
                 }
                 catch (HOperatorException hex)
                 {
-                    if (hex.Message.Contains("#5322")) // timeout
+                    if (hex.Message.Contains("#5322"))
                     {
                         OnError?.Invoke(this, $"HALCON timeout: {hex.Message}");
                         Thread.Sleep(200);
@@ -125,87 +147,40 @@ namespace FactoryCube.Vision.Camera
                 }
                 catch (Exception ex)
                 {
-                    OnError?.Invoke(this, $"Unexpected grab loop error: {ex.Message}");
+                    OnError?.Invoke(this, $"Unexpected grab error: {ex.Message}");
                     break;
                 }
             }
         }
 
-
-
-
-
-        public void SetAcquisitionMode(string mode)
+        public void Dispose()
         {
-            // Optional: use this for switching to 'continuous', 'software trigger', etc.
-            // Example: _grabber.SetFramegrabberParam("AcquisitionMode", mode);
+            // block to fully close before disposing
+            CloseAsync().GetAwaiter().GetResult();
         }
 
-        public void SetParameter(string name, object value)
-        {
-            if (_grabber == null)
-                throw new InvalidOperationException("Camera not initialized");
 
-            try
+
+        public async Task SetParameterAsync(string name, object value)
+        {
+            if (_grabber == null) throw new InvalidOperationException("Camera not initialized");
+            await Task.Run(() =>
             {
                 var tupleValue = new HTuple(value);
                 HOperatorSet.SetFramegrabberParam(_grabber, name, tupleValue);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException($"Failed to set parameter '{name}' with value '{value}': {ex.Message}", ex);
-            }
+            });
         }
 
-
-        public void SetFramerateAndExposure(double frameRateFps, double exposureTimeUs)
+        public async Task SetFrameRateAndExposureAsync(double frameRateFps, double exposureTimeUs)
         {
-            if (_grabber == null)
-                throw new InvalidOperationException("Camera not initialized");
-
-            try
+            if (_grabber == null) throw new InvalidOperationException("Camera not initialized");
+            await Task.Run(() =>
             {
-                // Get the maximum exposure time based on the requested frame rate
                 double frameIntervalUs = 1_000_000.0 / frameRateFps;
-
-                // Clamp exposure to avoid exceeding the frame interval
                 double safeExposure = Math.Min(exposureTimeUs, frameIntervalUs);
-
-                // Optional: log what we're doing
-                Console.WriteLine($"Setting framerate to {frameRateFps} fps (frame interval: {frameIntervalUs} µs)");
-                Console.WriteLine($"Requested exposure: {exposureTimeUs} µs ? Using: {safeExposure} µs");
-
-                // Set frame rate first
                 HOperatorSet.SetFramegrabberParam(_grabber, "AcquisitionFrameRate", new HTuple(frameRateFps));
-
-                // Then set exposure
                 HOperatorSet.SetFramegrabberParam(_grabber, "ExposureTime", new HTuple(safeExposure));
-            }
-            catch (Exception ex)
-            {
-                OnError?.Invoke(this, $"Failed to set framerate/exposure: {ex.Message}");
-            }
+            });
         }
-
-
-        public void Close()
-        {
-            try
-            {
-                Stop(); // stops thread, cancels token, disposes grabber
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning($"Camera close exception: {ex.Message}");
-            }
-        }
-
-        public void Dispose()
-        {
-            Close();
-        }
-
-
-
     }
 }

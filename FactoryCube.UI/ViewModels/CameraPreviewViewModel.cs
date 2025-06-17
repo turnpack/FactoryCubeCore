@@ -7,12 +7,9 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using FactoryCube.UI.ViewModels;
 using System.Collections.Generic;
-using FactoryCube.Vision.Vision;
-using FactoryCube.UI;
 using HalconDotNet;
 using FactoryCube.Core.Models;
 using FactoryCube.Vision.Camera;
-using System.Linq;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using FactoryCube.UI.Graphics;
@@ -24,13 +21,12 @@ public class CameraPreviewViewModel : ViewModelBase
     private ICameraService? _camera;
     private OverlayManager? _overlayManager;
     private readonly List<(double X, double Y)> _roiCenters = new();
-
+    private HObject? _lastImage;
     private readonly Func<string, ICameraService> _cameraFactory;
     public HWindow? HalconWindow { get; set; }
     private double? _zoomRow1, _zoomCol1, _zoomRow2, _zoomCol2;
     private int _lastImageWidth = 0;
     private int _lastImageHeight = 0;
-    private HObject? _lastImage;
 
     private bool _isDrawingRectangle = false;
     private (double X, double Y)? _rectStart = null;
@@ -87,41 +83,12 @@ public class CameraPreviewViewModel : ViewModelBase
 
                 if (IsPreviewRunning)
                 {
-                    StopPreview();
-                    StartPreview();
+                    StopPreviewAsync();
+                    StartPreviewAsync();
                 }
             }
         }
     }
-
-    private void OnSelectedCameraChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (!IsPreviewRunning || _camera is not HalconCameraService halcon || SelectedCamera == null)
-            return;
-
-        try
-        {
-            switch (e.PropertyName)
-            {
-                case nameof(CameraInfo.ExposureTime):
-                case nameof(CameraInfo.Gain):
-                case nameof(CameraInfo.FrameRate):
-                case nameof(CameraInfo.TriggerMode):
-                    Log($"Parameter changed: {e.PropertyName}, reapplying settings...");
-                    halcon.SetFramerateAndExposure(SelectedCamera.FrameRate, SelectedCamera.ExposureTime);
-                    halcon.SetParameter("Gain", SelectedCamera.Gain);
-                    halcon.SetParameter("TriggerMode", SelectedCamera.TriggerMode);
-                    break;
-            }
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Failed to apply setting: {e.PropertyName}: {ex.Message}";
-            _logger.LogError(ex, "Parameter update error");
-        }
-    }
-
-
 
     private BitmapImage? _liveImage;
     public BitmapImage? LiveImage
@@ -137,8 +104,10 @@ public class CameraPreviewViewModel : ViewModelBase
         set => SetProperty(ref _logOutput, value);
     }
 
-    public IRelayCommand StartPreviewCommand { get; }
-    public IRelayCommand StopPreviewCommand { get; }
+    public IAsyncRelayCommand StartPreviewCommand { get; }
+    public IAsyncRelayCommand StopPreviewCommand { get; }
+    public IAsyncRelayCommand ApplySettingsCommand { get; }
+
     public IRelayCommand ApplyCameraSettingsCommand { get; }
     public IRelayCommand ToggleCrosshairCommand { get; }
     public IRelayCommand ToggleGridCommand { get; }
@@ -156,11 +125,23 @@ public class CameraPreviewViewModel : ViewModelBase
     {
         _cameraFactory = cameraFactory;
         _logger = logger;
+        StartPreviewCommand = new AsyncRelayCommand(
+            StartPreviewAsync,
+            () => !IsPreviewRunning);
 
-        StartPreviewCommand = new RelayCommand(StartPreview, () => !IsPreviewRunning);
-        StopPreviewCommand = new RelayCommand(StopPreview, () => IsPreviewRunning);
+        StopPreviewCommand = new AsyncRelayCommand(
+            StopPreviewAsync,
+            () => IsPreviewRunning);
+
+        ApplySettingsCommand = new AsyncRelayCommand(
+            ApplyCameraSettingsAsync,
+            () => SelectedCamera != null && _camera != null);
+
+        //StartPreviewCommand = new RelayCommand(StartPreview, () => !IsPreviewRunning);
+
+        //StopPreviewCommand = new RelayCommand(StopPreview, () => IsPreviewRunning);
         RefreshCamerasCommand = new RelayCommand(DetectAvailableCameras);
-        ApplyCameraSettingsCommand = new RelayCommand(ApplyCameraSettings);
+        ApplyCameraSettingsCommand = new RelayCommand(() => ApplyCameraSettingsAsync().ConfigureAwait(false));
         ResetZoomCommand = new RelayCommand(ResetZoom);
         ToggleCrosshairCommand = new RelayCommand(() =>
         {
@@ -201,6 +182,30 @@ public class CameraPreviewViewModel : ViewModelBase
             }
         }
     }
+
+    //private async Task ApplyCameraSettingsAsync()
+    //{
+    //    if (SelectedCamera == null || _camera == null)
+    //        return;
+
+    //    try
+    //    {
+    //        // combined setting
+    //        await _camera.SetFrameRateAndExposureAsync(
+    //            SelectedCamera.FrameRate,
+    //            SelectedCamera.ExposureTime);
+
+    //        // then the rest
+    //        await _camera.SetParameterAsync("Gain", SelectedCamera.Gain);
+    //        await _camera.SetParameterAsync("TriggerMode", SelectedCamera.TriggerMode!);
+
+    //        StatusMessage = "Camera settings updated.";
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        StatusMessage = $"Error updating settings: {ex.Message}";
+    //    }
+    //}
 
 
 
@@ -306,7 +311,7 @@ public class CameraPreviewViewModel : ViewModelBase
         }
     }
 
-    private void ApplyCameraSettings()
+    private async Task ApplyCameraSettingsAsync()
     {
         if (SelectedCamera == null || _camera == null)
             return;
@@ -316,11 +321,11 @@ public class CameraPreviewViewModel : ViewModelBase
             if (_camera is HalconCameraService halcon)
             {
                 // Use combined method for framerate and exposure
-                halcon.SetFramerateAndExposure(SelectedCamera.FrameRate, SelectedCamera.ExposureTime);
+                await halcon.SetFrameRateAndExposureAsync(SelectedCamera.FrameRate, SelectedCamera.ExposureTime);
 
                 // Set remaining individual parameters
-                halcon.SetParameter("Gain", SelectedCamera.Gain);
-                halcon.SetParameter("TriggerMode", SelectedCamera.TriggerMode);
+                await halcon.SetParameterAsync("Gain", SelectedCamera.Gain);
+                await halcon.SetParameterAsync("TriggerMode", SelectedCamera.TriggerMode);
 
                 StatusMessage = "Camera settings updated.";
                 Log($"Applied settings: Framerate={SelectedCamera.FrameRate}, Exposure={SelectedCamera.ExposureTime}, Gain={SelectedCamera.Gain}, Trigger={SelectedCamera.TriggerMode}");
@@ -334,9 +339,7 @@ public class CameraPreviewViewModel : ViewModelBase
     }
 
 
-
-
-    private void StartPreview()
+    private async Task StartPreviewAsync()
     {
         if (IsPreviewRunning || SelectedCamera is null)
             return;
@@ -345,65 +348,150 @@ public class CameraPreviewViewModel : ViewModelBase
 
         try
         {
-            StopPreview(); // Ensure clean state
+            // Ensure any prior preview is fully stopped
+            await StopPreviewAsync();
 
-            _camera = new HalconCameraService(SelectedCamera.Id);
+            // Create the camera via your factory (so DI works)
+            _camera = _cameraFactory(SelectedCamera.Id);
             _camera.OnImageGrabbed += OnImageGrabbed;
-            _camera.OnError += (_, message) =>
+            //_camera.OnImageGrabbed += new EventHandler<HObject>(OnImageGrabbed);
+
+            _camera.OnError += (_, msg) =>
             {
-                StatusMessage = $"Camera error: {message}";
-                Log(message);
+                StatusMessage = $"Camera error: {msg}";
+                Log(msg);
             };
 
-            _camera.Start();
+            // Initialize & start acquisition asynchronously
+            await _camera.InitializeAsync();
+            await _camera.StartAcquisitionAsync();
+
             IsPreviewRunning = true;
             StatusMessage = $"Preview started for {SelectedCamera.Name}";
             Log(StatusMessage);
-            NotifyCommandStates();
         }
         catch (Exception ex)
         {
             StatusMessage = $"Failed to start preview: {ex.Message}";
             Log(StatusMessage);
         }
+        finally
+        {
+            NotifyPreviewCommandStates();
+        }
     }
 
-    public void StopPreview()
+
+
+    //private void StartPreview()
+    //{
+    //    if (IsPreviewRunning || SelectedCamera is null)
+    //        return;
+
+    //    Log($"Starting preview for camera: {SelectedCamera.Name}");
+
+    //    try
+    //    {
+    //        StopPreview(); // Ensure clean state
+
+    //        _camera = new HalconCameraService(SelectedCamera.Id);
+    //        _camera.OnImageGrabbed += OnImageGrabbed;
+    //        _camera.OnError += (_, message) =>
+    //        {
+    //            StatusMessage = $"Camera error: {message}";
+    //            Log(message);
+    //        };
+
+    //        _camera.Start();
+    //        IsPreviewRunning = true;
+    //        StatusMessage = $"Preview started for {SelectedCamera.Name}";
+    //        Log(StatusMessage);
+    //        NotifyCommandStates();
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        StatusMessage = $"Failed to start preview: {ex.Message}";
+    //        Log(StatusMessage);
+    //    }
+    //}
+
+
+    private async Task StopPreviewAsync()
     {
         if (!IsPreviewRunning)
             return;
 
+        Log("Stopping preview...");
+
         try
         {
-            Log("Stopping preview...");
-            _camera?.Close();
-            _camera = null;
+            if (_camera != null)
+            {
+                // Gracefully close acquisition
+                await _camera.CloseAsync();
+                _camera = null;
+            }
+
             IsPreviewRunning = false;
             StatusMessage = "Preview stopped.";
             LiveImage = null;
+
+            // dispose last HObject if any
             _lastImage?.Dispose();
             _lastImage = null;
-
-            NotifyCommandStates();
         }
         catch (Exception ex)
         {
             StatusMessage = $"Failed to stop preview: {ex.Message}";
             Log(StatusMessage);
         }
+        finally
+        {
+            NotifyPreviewCommandStates();
+        }
     }
 
 
+    //public void StopPreview()
+    //{
+    //    if (!IsPreviewRunning)
+    //        return;
 
+    //    try
+    //    {
+    //        Log("Stopping preview...");
+    //        _camera?.Close();
+    //        _camera = null;
+    //        IsPreviewRunning = false;
+    //        StatusMessage = "Preview stopped.";
+    //        LiveImage = null;
+    //        _lastImage?.Dispose();
+    //        _lastImage = null;
 
-    private void NotifyCommandStates()
+    //        NotifyCommandStates();
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        StatusMessage = $"Failed to stop preview: {ex.Message}";
+    //        Log(StatusMessage);
+    //    }
+    //}
+
+    private void NotifyPreviewCommandStates()
     {
-        (StartPreviewCommand as RelayCommand)?.NotifyCanExecuteChanged();
-        (StopPreviewCommand as RelayCommand)?.NotifyCanExecuteChanged();
+        StartPreviewCommand.NotifyCanExecuteChanged();
+        StopPreviewCommand.NotifyCanExecuteChanged();
     }
 
 
-    private void OnImageGrabbed(object? sender, HObject image)
+    //private void NotifyCommandStates()
+    //{
+    //    (StartPreviewCommand as RelayCommand)?.NotifyCanExecuteChanged();
+    //    (StopPreviewCommand as RelayCommand)?.NotifyCanExecuteChanged();
+    //}
+
+
+    private void OnImageGrabbed(object sender, HObject image)
     {
         try
         {
@@ -644,5 +732,37 @@ public class CameraPreviewViewModel : ViewModelBase
         Debug.WriteLine(message);
         LogOutput += $"{DateTime.Now:HH:mm:ss} - {message}\n";
         OnPropertyChanged(nameof(LogOutput));
+    }
+
+    private async void OnSelectedCameraChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (!IsPreviewRunning || _camera == null || SelectedCamera == null)
+            return;
+
+        try
+        {
+            switch (e.PropertyName)
+            {
+                case nameof(CameraInfo.FrameRate):
+                case nameof(CameraInfo.ExposureTime):
+                    await _camera.SetFrameRateAndExposureAsync(
+                        SelectedCamera.FrameRate,
+                        SelectedCamera.ExposureTime);
+                    break;
+
+                case nameof(CameraInfo.Gain):
+                    await _camera.SetParameterAsync("Gain", SelectedCamera.Gain);
+                    break;
+
+                case nameof(CameraInfo.TriggerMode):
+                    await _camera.SetParameterAsync("TriggerMode", SelectedCamera.TriggerMode!);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Failed to apply {e.PropertyName}: {ex.Message}";
+            _logger.LogError(ex, "Parameter update error");
+        }
     }
 }

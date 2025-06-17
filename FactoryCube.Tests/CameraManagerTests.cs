@@ -12,13 +12,13 @@ namespace FactoryCube.Tests
         {
             var camera = new Mock<ICameraService>();
             camera.Setup(c => c.IsRunning).Returns(false);
-            camera.Setup(c => c.Start());
-            camera.Setup(c => c.Stop());
+            camera.Setup(c => c.StartAcquisitionAsync());
+            camera.Setup(c => c.StopAcquisitionAsync());
 
-            camera.Object.Start();
+            camera.Object.StartAcquisitionAsync();
             Assert.False(camera.Object.IsRunning); // As per mock
 
-            camera.Object.Stop();
+            camera.Object.StopAcquisitionAsync();
             Assert.False(camera.Object.IsRunning);
         }
     }

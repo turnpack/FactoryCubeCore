@@ -1,6 +1,5 @@
 // MainWindow.xaml.cs
 using FactoryCube.UI.Enums;
-using FactoryCube.UI.ViewModels;
 using HalconDotNet;
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows;

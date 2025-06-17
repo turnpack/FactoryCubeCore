@@ -1,7 +1,7 @@
 using Moq;
 using FactoryCube.Interfaces;
 
-namespace FactoryCube.Tests
+namespace FactoryCube.Tests.Helpers
 {
     public static class TestHelpers
     {
