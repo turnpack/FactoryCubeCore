@@ -9,7 +9,12 @@ using FactoryCube.UI.Views;
 using FactoryCube.Comm;
 using Microsoft.Extensions.Logging;
 using FactoryCube.Vision.Processors;
+using FactoryCube.Services;
 using NLog;
+using FactoryCube.Interfaces.Wizard;
+using FactoryCube.Services.Wizard.Steps;
+using FactoryCube.Services.Wizard;
+using Microsoft.Extensions.Configuration;
 
 
 namespace FactoryCube.UI
@@ -38,11 +43,21 @@ namespace FactoryCube.UI
                         };
                     });
                     services.AddSingleton<ICommService, OmronCommService>();
-
-
-
-                    // ViewModels
                     services.AddSingleton<CameraPreviewViewModel>();
+                    services.AddSingleton<IRecipeManagerService, RecipeManagerService>();
+                    services.AddSingleton<IUserManagerService, UserManagerService>();
+                    services.AddSingleton<IDataLoggingService, DataLoggingService>();
+                    services.AddSingleton<IProductionControlService, ProductionControlService>();
+                    services.AddSingleton<ICalibrationManagerService, CalibrationManagerService>();
+
+                    var useModular = context.Configuration.GetValue<bool>("UseModularRecipeWizard");
+
+                    services.AddSingleton<IRecipeWizardService, RecipeTeachingWizardService>();
+
+
+                    // Register individual steps
+                    services.AddSingleton<IRecipeTeachingStep, PickupNozzleTeachingStep>();
+                    services.AddSingleton<IRecipeTeachingStep, EjectionSystemTeachingStep>();
 
 
                 })

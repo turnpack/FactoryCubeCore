@@ -1,5 +1,6 @@
 ﻿using HalconDotNet;
 using System.Threading.Tasks;
+using FactoryCube.Core.Models.Vision;
 
 namespace FactoryCube.Interfaces
 {
@@ -17,6 +18,10 @@ namespace FactoryCube.Interfaces
         /// Runs your die-detection algorithm on the captured image.
         /// </summary>
         Task<DetectionResult[]> ProcessImageAsync(byte[] imageData);
+        Task<VisionResult> RunSearchAsync(HImage image, VisionSearchConfig config);
+        Task<VisionResult> RunInkDotDetectionAsync(HImage image, InkDotConfig config);
+        Task<VisionResult> RunUpwardAlignmentAsync(HImage image, AlignmentConfig config);
+        Task<DefectInspectionResult> InspectDieSurfaceAsync(HImage image);
 
     }
 }

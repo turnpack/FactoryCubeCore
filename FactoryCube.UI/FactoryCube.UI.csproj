@@ -15,8 +15,14 @@
   <ItemGroup>
     <ProjectReference Include="..\FactoryCube.Comm\FactoryCube.Comm.csproj" />
     <ProjectReference Include="..\FactoryCube.Core\FactoryCube.Core.csproj" />
-    <ProjectReference Include="..\FactoryCube.Vision\FactoryCube.Vision.csproj" />
     <ProjectReference Include="..\FactoryCube.Interfaces\FactoryCube.Interfaces.csproj" />
     <ProjectReference Include="..\FactoryCube.Services\FactoryCube.Services.csproj" />
+    <ProjectReference Include="..\FactoryCube.Vision\FactoryCube.Vision.csproj" />
   </ItemGroup>
+	<ItemGroup>
+		<None Update="appsettings.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
+
 </Project>

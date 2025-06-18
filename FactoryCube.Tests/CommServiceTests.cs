@@ -4,6 +4,7 @@ using FactoryCube.Interfaces;
 using FactoryCube.Tests.Helpers;
 using FactoryCube.UI;
 using Microsoft.Extensions.DependencyInjection;
+using FactoryCube.Comm;
 
 
 namespace FactoryCube.Tests
@@ -14,15 +15,15 @@ namespace FactoryCube.Tests
         public async Task Test_CommService_Mock_Response()
         {
             // Arrange
-            App.ServiceProvider = TestServiceBootstrapper.Build();
-            var comm = App.ServiceProvider.GetRequiredService<ICommService>();
+            var provider = TestServiceBootstrapper.Build();
+            var comm = provider.GetRequiredService<ICommService>();
 
             // Act
-            var result = await comm.SendCommandAsync("PING");
+            await comm.SendCommandAsync("PING", null);
 
             // Assert
-            Assert.True(result);
-            Assert.Contains("Mocked", comm.LastStatus);
+            Assert.Contains("Mocked", ((SimulationCommService)comm).LastStatus);
         }
+
     }
 }

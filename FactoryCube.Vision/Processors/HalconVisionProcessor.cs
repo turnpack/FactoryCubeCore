@@ -6,6 +6,7 @@ using FactoryCube.Vision.Vision;
 using HalconDotNet;
 using FactoryCube.Vision.Helpers;
 using Microsoft.Extensions.Logging;
+using FactoryCube.Core.Models.Vision;
 
 namespace FactoryCube.Vision.Processors
 {
@@ -16,6 +17,11 @@ namespace FactoryCube.Vision.Processors
         public HalconVisionProcessor(ILogger<HalconVisionProcessor> logger)
         {
             _logger = logger;
+        }
+
+        public Task<DefectInspectionResult> InspectDieSurfaceAsync(HImage image)
+        {
+            throw new System.NotImplementedException();
         }
 
         public async Task<DetectionResult[]> ProcessImageAsync(byte[] imageData)
@@ -45,6 +51,21 @@ namespace FactoryCube.Vision.Processors
                 }
                 return results.ToArray();
             });
+        }
+
+        public Task<VisionResult> RunInkDotDetectionAsync(HImage image, InkDotConfig config)
+        {
+            throw new System.NotImplementedException();
+        }
+
+        public Task<VisionResult> RunSearchAsync(HImage image, VisionSearchConfig config)
+        {
+            throw new System.NotImplementedException();
+        }
+
+        public Task<VisionResult> RunUpwardAlignmentAsync(HImage image, AlignmentConfig config)
+        {
+            throw new System.NotImplementedException();
         }
     }
 }

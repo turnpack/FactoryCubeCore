@@ -12,7 +12,4 @@
     <PackageReference Include="MVTec.HalconDotNet-Windows" Version="24111.0.0" />
     <PackageReference Include="NLog" Version="5.5.0" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\FactoryCube.Interfaces\FactoryCube.Interfaces.csproj" />
-  </ItemGroup>
 </Project>

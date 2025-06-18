@@ -1,12 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Threading;
 using System.Threading.Tasks;
+using FactoryCube.Core.Models.Calibration;
 
 namespace FactoryCube.Interfaces
 {
     public interface ICalibrationService
     {
+        Task<CalibrationResult> RunAsync(CancellationToken token);
+        string Name { get; }
+        CalibrationType Type { get; }
     }
 }

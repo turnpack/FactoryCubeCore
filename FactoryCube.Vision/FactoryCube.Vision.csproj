@@ -12,7 +12,13 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <ProjectReference Include="..\FactoryCube.Core\FactoryCube.Core.csproj" />
 	  <ProjectReference Include="..\FactoryCube.Interfaces\FactoryCube.Interfaces.csproj" />
+	  <ProjectReference Include="..\FactoryCube.Services\FactoryCube.Services.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="Models\" />
 	</ItemGroup>
 </Project>
 
