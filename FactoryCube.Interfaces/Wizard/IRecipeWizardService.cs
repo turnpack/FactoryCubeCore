@@ -1,4 +1,5 @@
-﻿using FactoryCube.Core.Models.Wizard;
+﻿using FactoryCube.Core.Models.Recipes;
+using FactoryCube.Core.Models.Wizard;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,5 +11,6 @@ namespace FactoryCube.Interfaces.Wizard
     public interface IRecipeWizardService
     {
         Task RunWizardAsync(TeachingContext context);
+        Task RunWizardAsync(Recipe recipe, TeachingContext context);
     }
 }

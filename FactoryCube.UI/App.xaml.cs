@@ -15,6 +15,10 @@ using FactoryCube.Interfaces.Wizard;
 using FactoryCube.Services.Wizard.Steps;
 using FactoryCube.Services.Wizard;
 using Microsoft.Extensions.Configuration;
+using FactoryCube.Interfaces.Motion;
+using FactoryCube.Interfaces.Vision;
+using FactoryCube.Services.Motion;
+using FactoryCube.Services.Vision;
 
 
 namespace FactoryCube.UI
@@ -54,10 +58,15 @@ namespace FactoryCube.UI
 
                     services.AddSingleton<IRecipeWizardService, RecipeTeachingWizardService>();
 
+                    services.AddTransient<IRecipeWizardService, RecipeTeachingWizardService>();
+                    services.AddTransient<IRecipeTeachingStep, PickupNozzleTeachingStep>();
+                    services.AddTransient<IRecipeTeachingStep, EjectionSystemTeachingStep>();
 
-                    // Register individual steps
-                    services.AddSingleton<IRecipeTeachingStep, PickupNozzleTeachingStep>();
-                    services.AddSingleton<IRecipeTeachingStep, EjectionSystemTeachingStep>();
+                    services.AddTransient<IVisionService, HalconVisionService>();
+                    services.AddTransient<IZAxisService, ZAxisMotionService>();
+
+
+
 
 
                 })
@@ -66,15 +75,39 @@ namespace FactoryCube.UI
 
         protected override async void OnStartup(StartupEventArgs e)
         {
+            base.OnStartup(e);
+
             await AppHost.StartAsync();
 
-            var mainWindow = new MainWindow();
-            mainWindow.DataContext = AppHost.Services.GetRequiredService<CameraPreviewViewModel>();
+            var services = AppHost.Services;
+
+            // Check for recipe CLI argument
+            if (e.Args.Length == 1 && e.Args[0].EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+            {
+                var wizardService = services.GetRequiredService<IRecipeWizardService>();
+                try
+                {
+                    await WizardCliRunner.Run(e.Args[0], wizardService);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[FactoryCube CLI] Error: {ex.Message}");
+                }
+
+                Shutdown(); // Skip UI if CLI was executed
+                return;
+            }
+
+            // Default UI launch
+            var mainWindow = new MainWindow
+            {
+                DataContext = services.GetRequiredService<CameraPreviewViewModel>()
+            };
+
             Logger.Info("FactoryCube application started.");
             mainWindow.Show();
-
-            base.OnStartup(e);
         }
+
 
         protected override void OnExit(ExitEventArgs e)
         {

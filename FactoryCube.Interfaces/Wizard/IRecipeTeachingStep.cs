@@ -9,6 +9,7 @@ namespace FactoryCube.Interfaces.Wizard
 {
     public interface IRecipeTeachingStep
     {
+        string StepId { get; }
         int StepOrder { get; }
         string StepName { get; }
 

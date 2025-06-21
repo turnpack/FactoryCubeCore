@@ -12,5 +12,8 @@ namespace FactoryCube.Core.Models.Recipes
         public string Name { get; set; }
         public DateTime Created { get; set; }
         public Dictionary<string, object> Parameters { get; set; }
+
+        // Add this for modular wizard
+        public List<string> StepSequence { get; set; } = new();
     }
 }

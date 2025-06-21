@@ -9,6 +9,7 @@ namespace FactoryCube.Services.Wizard.Steps
     {
         private readonly IVisionService _visionService;
         private readonly IZAxisService _zAxisService;
+        public string StepId => "eject";
         public int StepOrder => 2;
         public string StepName => "Ejection System Teaching";
 

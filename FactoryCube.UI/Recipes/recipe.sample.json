@@ -1,0 +1,7 @@
+{
+  "RecipeId": "R2001",
+  "Name": "Basic Pickup + Eject",
+  "Created": "2025-06-18T15:00:00Z",
+  "Parameters": {},
+  "StepSequence": [ "pickup", "eject" ]
+}

@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "FactoryCube.UI": {
+      "commandName": "Project",
+      "commandLineArgs": "Recipes/recipe.sample.json"
+    }
+  }
+}

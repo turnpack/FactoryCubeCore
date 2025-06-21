@@ -10,6 +10,8 @@ namespace FactoryCube.Services.Wizard.Steps
     {
         private readonly IVisionService _visionService;
         private readonly IZAxisService _zAxisService;
+
+        public string StepId => "pickup";
         public int StepOrder => 1;
         public string StepName => "Pickup Nozzle Teaching";
 
